@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'nats-monitor'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'nats'
+    static_configs:
+      - targets: ['nats-exporter:7777']
+        labels:
+          instance: 'nats-server'

@@ -1,0 +1,106 @@
+{
+  "title": "NATS Monitoring",
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Message Rate (per second)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [
+        {
+          "expr": "rate(gnatsd_varz_in_msgs[1m])",
+          "legendFormat": "Messages In/sec",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(gnatsd_varz_out_msgs[1m])",
+          "legendFormat": "Messages Out/sec",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "msg/sec"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Byte Rate (per second)",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [
+        {
+          "expr": "rate(gnatsd_varz_in_bytes[1m])",
+          "legendFormat": "Bytes In/sec",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(gnatsd_varz_out_bytes[1m])",
+          "legendFormat": "Bytes Out/sec",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Total Messages In",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8},
+      "targets": [
+        {
+          "expr": "gnatsd_varz_in_msgs",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Total Messages Out",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 8},
+      "targets": [
+        {
+          "expr": "gnatsd_varz_out_msgs",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Active Connections",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 8},
+      "targets": [
+        {
+          "expr": "gnatsd_varz_connections",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Subscriptions",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 8},
+      "targets": [
+        {
+          "expr": "gnatsd_varz_subscriptions",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "schemaVersion": 39
+}
