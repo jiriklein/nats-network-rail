@@ -121,9 +121,7 @@ class NRClient(stomp.ConnectionListener):
                 loc_stanox = str(
                     body.get("loc_stanox") or body.get("location_stanox") or ""
                 )
-                self.bridge.publish_to_nats(
-                    subject=NATS_SUBJECT, data=json.dumps(body)
-                )
+                self.bridge.publish_to_nats(subject=NATS_SUBJECT, data=json.dumps(body))
 
         except Exception as exc:
             logger.error(exc)

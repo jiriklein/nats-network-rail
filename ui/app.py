@@ -1,6 +1,7 @@
 """
 FastAPI backend for train movement monitoring with station filtering
 """
+
 import asyncio
 import csv
 import json
@@ -63,8 +64,8 @@ async def load_stations():
             )
 
             for row in reader:
-                stanox = row.get('STANOX', '').strip()
-                stanme = row.get('STANME', '').strip()
+                stanox = row.get("STANOX", "").strip()
+                stanme = row.get("STANME", "").strip()
 
                 if stanox and stanme:
                     stations[stanox] = Station(
@@ -105,9 +106,9 @@ async def consume_nats_messages():
 
             # Extract STANOX codes for origin/destination/location
             # Adjust these fields based on your actual message structure
-            loc_stanox = data.get('loc_stanox') or data.get('stanox')
-            origin_stanox = data.get('origin_stanox') or data.get('from_stanox')
-            dest_stanox = data.get('dest_stanox') or data.get('to_stanox')
+            loc_stanox = data.get("loc_stanox") or data.get("stanox")
+            origin_stanox = data.get("origin_stanox") or data.get("from_stanox")
+            dest_stanox = data.get("dest_stanox") or data.get("to_stanox")
 
             # Broadcast to clients interested in any of these stations
             stanox_list = [s for s in [loc_stanox, origin_stanox, dest_stanox] if s]
@@ -130,12 +131,18 @@ async def broadcast_to_filtered_clients(stanox: str, message: dict):
         try:
             # Check if this client wants this station
             if stanox in user_filters.get(ws, set()):
-                await ws.send_json({
-                    "type": "movement",
-                    "stanox": stanox,
-                    "station": stations.get(stanox, {}).stanme if stanox in stations else "Unknown",
-                    "data": message
-                })
+                await ws.send_json(
+                    {
+                        "type": "movement",
+                        "stanox": stanox,
+                        "station": (
+                            stations.get(stanox, {}).stanme
+                            if stanox in stations
+                            else "Unknown"
+                        ),
+                        "data": message,
+                    }
+                )
         except Exception:
             disconnected.append(ws)
 
@@ -158,7 +165,7 @@ async def get_stations():
             }
             for s in stations.values()
         ],
-        "total": len(stations)
+        "total": len(stations),
     }
 
 
@@ -185,7 +192,9 @@ async def websocket_endpoint(websocket: WebSocket):
     user_filters[websocket] = set()
 
     try:
-        await websocket.send_json({"type": "connected", "message": "Connected to train monitor"})
+        await websocket.send_json(
+            {"type": "connected", "message": "Connected to train monitor"}
+        )
 
         while True:
             data = await websocket.receive_json()
@@ -194,11 +203,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Client wants to monitor specific stations
                 stanox_list = data.get("stanox", [])
                 user_filters[websocket] = set(stanox_list)
-                await websocket.send_json({
-                    "type": "subscribed",
-                    "count": len(stanox_list),
-                    "stations": [stations[s].stanme for s in stanox_list if s in stations]
-                })
+                await websocket.send_json(
+                    {
+                        "type": "subscribed",
+                        "count": len(stanox_list),
+                        "stations": [
+                            stations[s].stanme for s in stanox_list if s in stations
+                        ],
+                    }
+                )
 
             elif data.get("type") == "unsubscribe":
                 user_filters[websocket] = set()
