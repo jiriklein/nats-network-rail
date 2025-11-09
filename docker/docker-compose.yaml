@@ -11,6 +11,17 @@ services:
     networks:
       - monitoring
 
+  ui:
+    image: network-rail-ui
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile-ui-server
+    entrypoint: [ "uv", "run", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info" ]
+    ports:
+      - "8000:8000"
+    networks:
+      - monitoring
+
   nats:
     image: nats:2.12.1
     ports:
