@@ -1,16 +1,15 @@
 import asyncio
 import json
+import logging
 import os
 import queue
 import socket
 import sys
 import threading
 import time
-import logging
 
 import nats
 import stomp
-
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),

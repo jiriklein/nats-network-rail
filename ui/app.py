@@ -14,10 +14,9 @@ from typing import Dict, List, Set
 import aiohttp
 import nats
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
