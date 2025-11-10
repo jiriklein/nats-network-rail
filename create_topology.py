@@ -2,12 +2,14 @@
 
 import gzip
 import json
-import sys
+import os
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Type
+
+import requests
 
 
 class ScheduleRecord(ABC):
@@ -199,6 +201,13 @@ class NetworkBuilder:
         self.tiploc_to_stanox: Dict[str, str] = {}
         self.station_names: Dict[str, str] = {}
         self.connections: Dict[str, Set[str]] = defaultdict(set)
+        self._schedule_file_url: str = (
+            "https://publicdatafeeds.networkrail.co.uk/ntrod/CifFileAuthenticate?type=CIF_ALL_FULL_DAILY&day=toc-full"
+        )
+        self._ntrod_username: str = os.getenv("NTROD_USERNAME")
+        self._ntrod_password: str = os.getenv("NTROD_PASSWORD")
+        self._schedule_filepath: str = "network-data/top-full.gz"
+        self._output_filepath: str = "network-data/rail-network.json"
 
         self.stats = {
             "lines_processed": 0,
@@ -237,20 +246,34 @@ class NetworkBuilder:
 
             # skip dupes and add bi-directionality
             if from_stanox != to_stanox:
-                # Bidirectional connections
+                # bidirectional connections
                 self.connections[from_stanox].add(to_stanox)
                 self.connections[to_stanox].add(from_stanox)
 
         self.stats["schedules_processed"] += 1
 
-    def process_file(self, schedule_file: str):
-        print(f"Reading schedule data from {schedule_file}...")
+    def download_schedule_file(self):
+        print(f"Downloading schedule data from {self._schedule_file_url}...")
+        if not (self._ntrod_password and self._ntrod_username):
+            raise RuntimeError("NTROD username or password not provided.")
+
+        session = requests.Session()
+        session.auth = (self._ntrod_username, self._ntrod_password)
+        with session.get(self._schedule_file_url, stream=True) as response:
+            file = Path(self._schedule_filepath)
+            file.parent.mkdir(parents=True, exist_ok=True)
+            with open(f"{self._schedule_filepath}", "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+    def process_file(self):
+        print(f"Reading schedule data from {self._schedule_filepath}...")
 
         # Open gzipped or plain file
-        if schedule_file.endswith(".gz"):
-            f = gzip.open(schedule_file, "rt", encoding="utf-8")
+        if self._schedule_filepath.endswith(".gz"):
+            f = gzip.open(self._schedule_filepath, "rt", encoding="utf-8")
         else:
-            f = open(schedule_file, "r", encoding="utf-8")
+            f = open(self._schedule_filepath, "r", encoding="utf-8")
 
         try:
             for line in f:
@@ -287,55 +310,37 @@ class NetworkBuilder:
         ]
 
         # edges (avoiding bidirectional dupes)
-        links = []
-        seen_links: Set[tuple] = set()
+        edges = []
+        seen_edges: Set[tuple] = set()
 
         for source in sorted(self.connections.keys()):
             for target in sorted(self.connections[source]):
-                link_key = tuple(sorted([source, target]))
-                if link_key not in seen_links:
-                    seen_links.add(link_key)
-                    links.append({"source": source, "target": target})
+                edge_key = tuple(sorted([source, target]))
+                if edge_key not in seen_edges:
+                    seen_edges.add(edge_key)
+                    edges.append({"source": source, "target": target})
 
-        return {"nodes": nodes, "links": links}
+        return {"nodes": nodes, "edges": edges}
 
-    def save(self, output_file: str):
+    def save(self):
         network_data = self.build_network_json()
 
         print(f"\nNetwork created:")
         print(f"  Nodes: {len(network_data['nodes']):,}")
-        print(f"  Links: {len(network_data['links']):,}")
+        print(f"  Edges: {len(network_data['edges']):,}")
 
-        output_path = Path(output_file)
+        output_path = Path(self._output_filepath)
         with output_path.open("w", encoding="utf-8") as f:
             json.dump(network_data, f, indent=2)
 
-        print(f"\nNetwork saved to {output_file}")
+        print(f"\nNetwork saved to {self._output_filepath}")
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python create_topology.py <schedule_file> [output_file]")
-        print("")
-        print("Example:")
-        print("  python create_topology.py toc-full.gz")
-        print("  python create_topology.py toc-full.json rail_network.json")
-        print("")
-        print("The schedule file should be the JSON format from Network Rail.")
-        print("Download from: https://publicdatafeeds.networkrail.co.uk/")
-        sys.exit(1)
-
-    schedule_file = sys.argv[1]
-    output_file = sys.argv[2] if len(sys.argv) > 2 else "rail_network.json"
-
-    if not Path(schedule_file).exists():
-        print(f"Error: Schedule file not found: {schedule_file}")
-        sys.exit(1)
-
-    # Build network
     builder = NetworkBuilder()
-    builder.process_file(schedule_file)
-    builder.save(output_file)
+    builder.download_schedule_file()
+    builder.process_file()
+    builder.save()
 
 
 if __name__ == "__main__":
