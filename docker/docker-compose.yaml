@@ -5,9 +5,20 @@ services:
       context: ..
       dockerfile: docker/Dockerfile-client
     environment:
-      - NROD_USERNAME=${NROD_USERNAME}
-      - NROD_PASSWORD=${NROD_PASSWORD}
+      - NTROD_USERNAME=${NTROD_USERNAME}
+      - NTROD_PASSWORD=${NTROD_PASSWORD}
     entrypoint: ["uv", "run", "connect_and_subscribe.py"]
+    networks:
+      - monitoring
+
+  ui:
+    image: network-rail-ui
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile-ui-server
+    entrypoint: [ "uv", "run", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info" ]
+    ports:
+      - "8000:8000"
     networks:
       - monitoring
 

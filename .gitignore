@@ -3,3 +3,4 @@
 .env
 prometheus-data
 grafana-data
+network-data

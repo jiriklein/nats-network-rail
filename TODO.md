@@ -4,10 +4,12 @@ Below are required tasks to consider this repo an MVP.
 
 ### Todo
 
+- [ ] #feat Extend minimal UI to track trains between selected stations as a network graph
+
 ### In Progress
 
-- [ ] #chore Add `README.md`
 - [ ] #chore Add schemas and mapping for relevant NROD stations
+- [ ] #feat Add minimal UI to select stations to track
 
 ### Done ✓
 
@@ -21,3 +23,4 @@ Below are required tasks to consider this repo an MVP.
 - [x] #feat #infra Add `docker-compose.yaml` and resolve networking
 - [x] #chore Add initial files, setup and minimal deps 
 - [x] #feat #infra Add Prometheus and Grafana monitoring for MQ throughput
+- [x] #chore Add `README.md`

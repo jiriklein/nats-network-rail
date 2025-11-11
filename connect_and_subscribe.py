@@ -1,16 +1,15 @@
 import asyncio
 import json
+import logging
 import os
 import queue
 import socket
 import sys
 import threading
 import time
-import logging
 
 import nats
 import stomp
-
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -19,10 +18,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger("network-rail-client")
 
-# NROD and STOMP feed related
+# NTROD and STOMP feed related
 CLIENT_ID = socket.getfqdn()
-NROD_USERNAME = os.getenv("NROD_USERNAME")
-NROD_PASSWORD = os.getenv("NROD_PASSWORD")
+NTROD_USERNAME = os.getenv("NTROD_USERNAME")
+NTROD_PASSWORD = os.getenv("NTROD_PASSWORD")
 MOVEMENT_TOPIC = "/topic/TRAIN_MVT_ALL_TOC"
 PUBLIC_DATA_FEED_URL = "publicdatafeeds.networkrail.co.uk"
 PUBLIC_DATA_FEED_PORT = 61618
@@ -95,8 +94,8 @@ class NatsBridge:
 
 
 def connect_and_subscribe(conn: stomp.Connection):
-    connect_header = {"client-id": NROD_USERNAME + "-" + CLIENT_ID}
-    conn.connect(NROD_USERNAME, NROD_PASSWORD, wait=True, headers=connect_header)
+    connect_header = {"client-id": NTROD_USERNAME + "-" + CLIENT_ID}
+    conn.connect(NTROD_USERNAME, NTROD_PASSWORD, wait=True, headers=connect_header)
     conn.subscribe(destination=MOVEMENT_TOPIC, id=1, ack="auto")
 
 
@@ -118,14 +117,7 @@ class NRClient(stomp.ConnectionListener):
             messages = evt if isinstance(evt, list) else [evt]
             for m in messages:
                 body = m.get("body") or m
-                loc_stanox = str(
-                    body.get("loc_stanox") or body.get("location_stanox") or ""
-                )
-                if loc_stanox in STATIONS_ALLOWLIST:
-                    logger.info("Message: %s", str(body)[:50])
-                    self.bridge.publish_to_nats(
-                        subject=NATS_SUBJECT, data=json.dumps(body)
-                    )
+                self.bridge.publish_to_nats(subject=NATS_SUBJECT, data=json.dumps(body))
 
         except Exception as exc:
             logger.error(exc)
