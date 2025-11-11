@@ -335,12 +335,21 @@ class NetworkBuilder:
 
         print(f"\nNetwork saved to {self._output_filepath}")
 
+    def publish(self):
+        with requests.Session() as s:
+            url = "http://localhost:8000/upload-topology"
+            with open(self._output_filepath, "rb") as f:
+                files = {"file": (self._output_filepath, f, "application/json")}
+                resp = s.post(url, files=files)
+            print(resp.status_code, resp.text)
+
 
 def main():
     builder = NetworkBuilder()
-    builder.download_schedule_file()
-    builder.process_file()
-    builder.save()
+    # builder.download_schedule_file()
+    # builder.process_file()
+    # builder.save()
+    builder.publish()
 
 
 if __name__ == "__main__":

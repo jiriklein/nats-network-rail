@@ -349,6 +349,11 @@
             links: []
         };
 
+        let STATIC = {
+          nodesById: new Map(),   // id -> {id, name}
+          edges: []               // [{source, target}]
+        };
+
         // Initialize D3 network
         function initNetwork() {
             const container = document.getElementById('network');
@@ -412,19 +417,31 @@
                 };
             });
 
-            // Create links from observed movements
-            graphData.links = [];
+            // Build links from live movements AND static file edges
+            const linkSet = new Set();
+
+            // 1) live movements
             movements.forEach((targets, source) => {
-                targets.forEach(target => {
-                    if (selectedStations.has(source) && selectedStations.has(target)) {
-                        graphData.links.push({
-                            source: source,
-                            target: target,
-                            active: false
-                        });
-                    }
-                });
+              targets.forEach(target => {
+                if (selectedStations.has(source) && selectedStations.has(target)) {
+                  linkSet.add(`${source}→${target}`);
+                }
+              });
             });
+
+            // 2) static edges from file
+            for (const e of STATIC.edges) {
+              if (selectedStations.has(e.source) && selectedStations.has(e.target)) {
+                linkSet.add(`${e.source}→${e.target}`);
+              }
+            }
+
+            // materialize into graphData.links
+            graphData.links = Array.from(linkSet, key => {
+              const [source, target] = key.split('→');
+              return { source, target };
+            });
+
 
             // Force simulation
             const width = svg.attr('width');
@@ -439,7 +456,10 @@
             // Draw links
             const link = svg.select('.links')
                 .selectAll('.link')
-                .data(graphData.links, d => `${d.source.id}-${d.target.id}`)
+                .data(
+                  graphData.links,
+                  d => `${typeof d.source === 'object' ? d.source.id : d.source}-${typeof d.target === 'object' ? d.target.id : d.target}`
+                )
                 .join('line')
                 .attr('class', 'link');
 
@@ -549,6 +569,17 @@
             stations = data.stations;
             renderStations(stations);
         }
+
+        async function loadGraph() {
+          const res = await fetch('/api/graph');   // or '/static/graph.json' if you prefer
+          if (!res.ok) return;
+          const data = await res.json();
+
+          // keep in memory only
+          STATIC.nodesById = new Map(data.nodes.map(n => [String(n.id), { id: String(n.id), name: n.name }]));
+          STATIC.edges = data.edges.map(e => ({ source: String(e.source), target: String(e.target) }));
+        }
+
 
         // Render station list
         function renderStations(stationList) {
@@ -709,6 +740,7 @@
         initNetwork();
         loadStations();
         connectWebSocket();
+        loadGraph();
 
         // Handle window resize
         window.addEventListener('resize', () => {

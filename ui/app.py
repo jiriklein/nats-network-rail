@@ -9,14 +9,19 @@ import logging
 import os
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List, Set
+from uuid import uuid4
 
+import aiofiles
 import aiohttp
 import nats
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import (FastAPI, File, HTTPException, UploadFile, WebSocket,
+                     WebSocketDisconnect)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import JSONResponse
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -151,6 +156,45 @@ async def broadcast_to_filtered_clients(stanox: str, message: dict):
             active_connections.remove(ws)
         if ws in user_filters:
             del user_filters[ws]
+
+
+@app.post("/upload-topology")
+async def create_topology(file: UploadFile = File(...)):
+    fname = "topology.json"  # consider uuid4 + emit + versioning
+    upload_dir = Path("network-data")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    chunk_size = 8192
+
+    if file.content_type not in (
+        "application/json",
+        "text/json",
+        "application/octet-stream",
+    ):
+        raise HTTPException(status_code=400, detail="Please upload a JSON file.")
+
+    dest = upload_dir / f"{fname}"
+    bytes_written = 0
+
+    try:
+        async with aiofiles.open(dest, "wb") as out:
+            while True:
+                chunk = await file.read(chunk_size)
+                if not chunk:
+                    break
+                bytes_written += len(chunk)
+                await out.write(chunk)
+    finally:
+        await file.close()
+
+    return JSONResponse({"saved_as": str(dest), "bytes": bytes_written})
+
+
+@app.get("/api/graph")
+async def serve_topology():
+    path = Path("network-data/topology.json")
+    if not path.exists():
+        return JSONResponse({"error": "graph.json not found"}, status_code=404)
+    return JSONResponse(json.loads(path.read_text(encoding="utf-8")))
 
 
 @app.get("/api/stations")
